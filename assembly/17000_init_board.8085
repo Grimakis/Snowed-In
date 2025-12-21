@@ -1,0 +1,129 @@
+; INIT BOARD (CALL ABI)
+; Micro-API:
+;   mode=0  -> fill base board (borders 0, interior 1)
+;   mode<>0 -> clear S% wherever O% has obstacles
+; Entry:
+;   A  = mode
+;   HL = VARPTR(MP%(0)) where:
+;        [HL]   = VARPTR(S%(0,0)) low/high
+;        [HL+2] = VARPTR(O%(0,0)) low/high
+; Clobbers:
+;   A,B,C,D,E,H,L (B/D/H restored with PUSH/POP)
+; Notes:
+; - BASIC loader patches Jxx targets after POKE into MC%.
+; - Arrays are integer (2 bytes). First subscript varies fastest.
+;   Row step = 2 bytes. Column step = 20 bytes (10 rows * 2).
+; - Start cell for board is row1,col1 => offset 0x16 from S%(0,0).
+
+        ORG 0000H
+
+START:  PUSH B
+        PUSH D
+        PUSH H
+        ORA A
+        JNZ CLEAR           ; patched by BASIC loader
+
+; ---- FILL BASE BOARD (A=0) ----
+; Load S% base pointer into HL
+        MOV E,M
+        INX H
+        MOV D,M
+        XCHG                ; HL = S%(0,0)
+        LXI D,0016H         ; +0x16 -> row1,col1
+        DAD D               ; HL = S%(1,1)
+        MVI B,28H           ; 40 columns
+
+COLLP:  MVI M,00H           ; row1 = 0 (low)
+        INX H
+        MVI M,00H           ; row1 = 0 (high)
+        INX H               ; HL -> row2
+
+        MOV A,B
+        CPI 28H
+        JZ BORC
+        CPI 01H
+        JZ BORC
+
+; Interior columns (2..39): rows 2..7 = 1
+        MVI C,06H
+INTLP:  MVI M,01H           ; low = 1
+        INX H
+        MVI M,00H           ; high = 0
+        INX H
+        DCR C
+        JNZ INTLP           ; patched
+        JMP ROW8            ; patched
+
+; Border columns (1 and 40): rows 2..7 = 0
+BORC:   MVI C,06H
+BORLP:  MVI M,00H
+        INX H
+        MVI M,00H
+        INX H
+        DCR C
+        JNZ BORLP           ; patched
+
+ROW8:   MVI M,00H           ; row8 = 0 (low)
+        INX H
+        MVI M,00H           ; row8 = 0 (high)
+        INX H               ; HL -> row9
+
+        INX H               ; advance to row1 of next column
+        INX H
+        INX H
+        INX H
+        DCR B
+        JNZ COLLP           ; patched
+        JMP EXIT            ; patched
+
+; ---- CLEAR UNDER OBSTACLES (A<>0) ----
+CLEAR:  MOV E,M             ; DE = S%(0,0)
+        INX H
+        MOV D,M
+        INX H
+        MOV C,M             ; BC = O%(0,0)
+        INX H
+        MOV B,M
+        XCHG                ; HL = S%(0,0), DE = param ptr? swap
+        ; restore O% pointer into DE
+        MOV D,B
+        MOV E,C
+
+        LXI B,0016H         ; +0x16 -> row1,col1
+        DAD B               ; HL = S%(1,1)
+        XCHG
+        DAD B               ; DE = O%(1,1)
+        XCHG
+
+        MVI B,28H           ; 40 columns
+CLCOL:  MVI C,08H           ; 8 rows
+CLROW:  LDAX D              ; A = O% low byte
+        ORA A
+        JZ NOCLR            ; patched
+        XRA A
+        MOV M,A             ; clear S% low
+        INX H
+        MOV M,A             ; clear S% high
+        INX H
+        JMP ADV             ; patched
+NOCLR:  INX H
+        INX H
+ADV:    INX D
+        INX D
+        DCR C
+        JNZ CLROW           ; patched
+        INX H               ; advance to row1 next column (+4 bytes)
+        INX H
+        INX H
+        INX H
+        INX D
+        INX D
+        INX D
+        INX D
+        DCR B
+        JNZ CLCOL           ; patched
+
+EXIT:   POP H
+        POP D
+        POP B
+        RET
