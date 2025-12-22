@@ -11,9 +11,10 @@ jobs:
       contents: write  # required for release asset upload with GITHUB_TOKEN
 
     steps:
-      - name: Checkout repository
+      - name: Checkout repository (with submodules)
         uses: actions/checkout@v4
         with:
+          submodules: recursive
           fetch-depth: 0
 
       - name: Verify release tag matches source version
@@ -26,10 +27,10 @@ jobs:
           echo "Tag version:    $TAG_VERSION"
           [ "$SRC_VERSION" = "$TAG_VERSION" ] || { echo "Version mismatch: release tag must match SNOW.DO"; exit 1; }
 
-      - name: Prepare release artifacts
+      - name: Build compact and tokenized DO files
         run: |
-          mkdir -p dist
-          cp SNOW.DO dist/SNOW.DO
+          chmod +x scripts/build_release.sh
+          ./scripts/build_release.sh
 
       - name: Upload build artifacts to workflow run
         uses: actions/upload-artifact@v4
@@ -41,6 +42,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            dist/SNOW.DO
+            dist/ascii_packed/SNOW.DO
+            dist/tokenized_packed/SNOW.BA
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
