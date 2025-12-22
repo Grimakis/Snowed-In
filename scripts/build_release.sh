@@ -15,8 +15,14 @@ TOKENIZED_OUT="$TOKEN_DIR/SNOW.BA"
 echo "Using source: $SRC_FILE"
 echo "Tools repo: $TOOLS_DIR"
 
-python "$TOOLS_DIR/pack_basic.py" "$SRC_FILE" "$COMPACT_OUT"
-python "$TOOLS_DIR/tokenize_basic.py" "$COMPACT_OUT" "$TOKENIZED_OUT" 0x8001
+if command -v python3 >/dev/null 2>&1; then
+  PYTHON_BIN=python3
+else
+  PYTHON_BIN=python
+fi
+
+"$PYTHON_BIN" "$TOOLS_DIR/pack_basic.py" "$SRC_FILE" "$COMPACT_OUT"
+"$PYTHON_BIN" "$TOOLS_DIR/tokenize_basic.py" "$COMPACT_OUT" "$TOKENIZED_OUT" 0x8001
 
 echo "Created artifacts:"
 find "$DIST_DIR" -maxdepth 2 -type f -print
