@@ -206,6 +206,13 @@ def tokenize_line(ascii_code: str) -> bytes:
                 i += keyword_len
                 matched = True
 
+                if upper_candidate == 'REM':
+                    tokenized.extend(
+                        ascii_code[i:].encode('ascii', errors='replace')
+                    )
+                    i = len(ascii_code)
+                    break
+
                 # Special handling: ELSE token must be preceded by colon
                 if upper_candidate == 'ELSE':
                     # Ensure there's a colon before ELSE

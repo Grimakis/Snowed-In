@@ -37,7 +37,7 @@ def remove_comment(line):
             i += 1
             continue
 
-        # Remove comment if not in string
+        # Remove comment if not in string (single quote)
         if char == "'" and not in_string:
             # Remove the colon that precedes this comment (if any)
             # Backtrack to remove `: ` or ` :` or `:` patterns
@@ -47,6 +47,21 @@ def remove_comment(line):
                     break
                 result.pop()
             break
+
+        # Remove comment if not in string (REM)
+        if not in_string and line[i:i+3].upper() == "REM":
+            prev_ok = (
+                i == 0
+                or line[i - 1] in " :\t"
+                or line[i - 4:i].upper() in ("THEN", "ELSE")
+            )
+            if prev_ok:
+                while result and (result[-1] == ' ' or result[-1] == ':'):
+                    if result[-1] == ':':
+                        result.pop()
+                        break
+                    result.pop()
+                break
 
         result.append(char)
         i += 1
@@ -261,8 +276,25 @@ def parse_basic_file(filename):
     return lines
 
 
+LINE_REF_KEYWORDS = [
+    'GOTO',
+    'GOSUB',
+    'THEN',
+    'ELSE',
+    'RESTORE',
+    'RUN',
+    'RESUME',
+    'EDIT',
+    'LIST',
+    'LLIST',
+    'DELETE',
+    'AUTO',
+    'RENUM',
+]
+
+
 def find_line_targets(lines):
-    """Find all line numbers that are targets of GOTO/GOSUB/etc."""
+    """Find all line numbers that are targets of line-number keywords."""
     targets = set()
 
     for line_num, code in lines:
@@ -286,7 +318,7 @@ def find_line_targets(lines):
             # Look for keywords
             remaining = code_clean[i:].upper()
 
-            for keyword in ['GOTO', 'GOSUB', 'THEN', 'ELSE']:
+            for keyword in LINE_REF_KEYWORDS:
                 if remaining.startswith(keyword):
                     i += len(keyword)
 
@@ -345,6 +377,10 @@ def ends_with_control_flow(code):
 
     # Check for simple control flow keywords at start
     if last_stmt_upper in ('RETURN', 'END', 'STOP'):
+        return True
+
+    # REM should never merge with following code
+    if last_stmt_upper.startswith('REM'):
         return True
 
     # Check if last statement is GOTO followed by a line number
@@ -504,7 +540,7 @@ def update_line_references(code, line_map):
         remaining = code[i:].upper()
         keyword_found = False
 
-        for keyword in ['GOTO', 'GOSUB', 'THEN', 'ELSE']:
+        for keyword in LINE_REF_KEYWORDS:
             if remaining.startswith(keyword):
                 result.extend(code[i:i+len(keyword)])
                 i += len(keyword)
@@ -547,7 +583,19 @@ def pack_basic_file(input_file, output_file):
         code = remove_print_semicolons(code)
         packed.append((num, code))
 
-    # Find GOTO/GOSUB targets
+    # Find line number targets
+    targets = find_line_targets(packed)
+
+    # Drop blank lines unless they're targets; keep targets as REM
+    packed_filtered = []
+    for num, code in packed:
+        if code.strip():
+            packed_filtered.append((num, code))
+            continue
+        if num in targets:
+            packed_filtered.append((num, "REM"))
+
+    packed = packed_filtered
     targets = find_line_targets(packed)
     print(f"Found {len(targets)} line number targets")
 
