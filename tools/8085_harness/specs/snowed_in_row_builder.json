@@ -1,0 +1,33 @@
+{
+  "asm": "../../../assembly/17010_row_builder.8085",
+  "layouts": {
+    "alt": {
+      "base": 64704,
+      "cols": 20,
+      "cell_bytes": 2
+    }
+  },
+  "cases": [
+    {
+      "name": "row_builder_basic",
+      "registers": {
+        "H": 16,
+        "L": 0
+      },
+      "writes": [
+        { "addr": 4096, "u16": 8192 },
+        { "addr": 8234, "u16": 3 },
+        { "addr": 8300, "u16": 1 },
+        { "addr": 8322, "u16": 4 },
+        { "addr": 9008, "u16": 2 }
+      ],
+      "expect_cells": [
+        { "layout": "alt", "row": 0, "col": 0, "u16": 45943 },
+        { "layout": "alt", "row": 1, "col": 0, "u16": 8224 },
+        { "layout": "alt", "row": 3, "col": 2, "u16": 8352 },
+        { "layout": "alt", "row": 4, "col": 2, "u16": 46112 },
+        { "layout": "alt", "row": 7, "col": 19, "u16": 45687 }
+      ]
+    }
+  ]
+}

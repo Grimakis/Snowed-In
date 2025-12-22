@@ -28,7 +28,7 @@ except ModuleNotFoundError:
 
 
 def _cell_addr(base: int, row: int, col: int) -> int:
-    return base + ((row * 42) + col) * 2
+    return base + ((col * 10) + row) * 2
 
 
 def _fill_array(cpu, base: int, rows: int, cols: int, val: int) -> None:
@@ -39,7 +39,9 @@ def _fill_array(cpu, base: int, rows: int, cols: int, val: int) -> None:
 
 def _set_obstacles(cpu, base: int, cells: list[tuple[int, int]]) -> None:
     for r, c in cells:
-        write_u16(cpu, _cell_addr(base, r, c), 1)
+        addr = _cell_addr(base, r, c)
+        val = read_u16(cpu, addr)
+        write_u16(cpu, addr, (val & 0xFF) | 0x0100)
 
 
 def _expect_eq(label: str, got: int, want: int) -> None:
@@ -47,9 +49,9 @@ def _expect_eq(label: str, got: int, want: int) -> None:
         raise SystemExit(f"{label}: expected {want}, got {got}")
 
 
-def _setup_mp(cpu, mp_addr: int, s_base: int, o_base: int) -> None:
+def _setup_mp(cpu, mp_addr: int, s_base: int) -> None:
     write_u16(cpu, mp_addr, s_base)
-    write_u16(cpu, mp_addr + 2, o_base)
+    write_u16(cpu, mp_addr + 2, 0)
 
 
 def _run_fill_test(cpu, mp_addr: int, s_base: int) -> None:
@@ -71,11 +73,10 @@ def _run_fill_test(cpu, mp_addr: int, s_base: int) -> None:
             _expect_eq(f"fill r{r} c{c}", got, want)
 
 
-def _run_clear_test(cpu, mp_addr: int, s_base: int, o_base: int) -> None:
+def _run_clear_test(cpu, mp_addr: int, s_base: int) -> None:
     _fill_array(cpu, s_base, 10, 42, 2)
-    _fill_array(cpu, o_base, 10, 42, 0)
     obstacles = [(1, 1), (4, 20), (8, 40)]
-    _set_obstacles(cpu, o_base, obstacles)
+    _set_obstacles(cpu, s_base, obstacles)
 
     cpu.A.value = 1
     cpu.H.value = (mp_addr >> 8) & 0xFF
@@ -86,7 +87,7 @@ def _run_clear_test(cpu, mp_addr: int, s_base: int, o_base: int) -> None:
         for c in range(1, 41):
             addr = _cell_addr(s_base, r, c)
             got = read_u16(cpu, addr)
-            want = 0 if (r, c) in obstacles else 2
+            want = 256 if (r, c) in obstacles else 2
             _expect_eq(f"clear r{r} c{c}", got, want)
 
 
@@ -108,16 +109,15 @@ def main() -> None:
 
     mp_addr = 0x1000
     s_base = 0x2000
-    o_base = 0x3000
-    _setup_mp(cpu, mp_addr, s_base, o_base)
+    _setup_mp(cpu, mp_addr, s_base)
 
     if args.mode in ("fill", "both"):
         _run_fill_test(cpu, mp_addr, s_base)
 
     if args.mode in ("clear", "both"):
         cpu = load_program(asm, cpu_cls)
-        _setup_mp(cpu, mp_addr, s_base, o_base)
-        _run_clear_test(cpu, mp_addr, s_base, o_base)
+        _setup_mp(cpu, mp_addr, s_base)
+        _run_clear_test(cpu, mp_addr, s_base)
 
     print("OK")
 

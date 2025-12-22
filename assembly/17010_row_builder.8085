@@ -1,0 +1,104 @@
+; ROW BUILDER (CALL ABI)
+; Builds the 8x40 screen into ALTLCD (0xFCC0) using S% only.
+; S% high byte holds obstacle flag (1=obstacle), low byte holds snow value.
+; Reverse video is encoded by setting bit 7 on the character byte.
+; Entry:
+;   HL = VARPTR(MP%(0)) where:
+;        [HL] = VARPTR(S%(0,0)) low/high
+; Clobbers:
+;   A,B,C,D,E,H,L
+; Notes:
+; - Arrays are integer (2 bytes). First subscript varies fastest.
+; - S%(row,col) offset = (col*10 + row) * 2
+; - Row1,col1 offset = 0x16 from S%(0,0)
+
+        ORG 0000H
+
+START:  PUSH B
+        PUSH D
+        PUSH H
+
+        ; Load S% base into DE
+        MOV E,M
+        INX H
+        MOV D,M
+
+        ; DE = S base + 0x16
+        XCHG
+        LXI B,0016H
+        DAD B
+        XCHG
+
+        ; HL = ALTLCD base
+        LXI H,FCC0H
+
+        ; Row count = 8
+        MVI B,08H
+
+ROWLP:  PUSH D              ; save row start
+        MVI C,28H           ; col count = 40
+
+COLLP:  ; Obstacle check (high byte)
+        INX D
+        LDAX D
+        DCX D
+        ORA A
+        JZ NOBST
+        MVI A,A3H           ; reverse '#'
+        JMP STORE
+
+NOBST:  ; Check if top/bottom row via B
+        MOV A,B
+        CPI 08H
+        JZ TOPBOT
+        CPI 01H
+        JZ TOPBOT
+
+        ; middle rows
+        LDAX D              ; S low
+        ORA A
+        JZ MIDEMP
+        CPI 01H
+        JZ MIDREV
+        ADI 30H
+        ORI 80H
+        JMP STORE
+
+MIDEMP: MVI A,20H
+        JMP STORE
+
+MIDREV: MVI A,A0H
+        JMP STORE
+
+TOPBOT: LDAX D
+        ORA A
+        JZ TOPW
+        ADI 30H
+        ORI 80H
+        JMP STORE
+
+TOPW:   MVI A,77H
+
+STORE:  MOV M,A             ; write to ALTLCD
+        INX H               ; next col in ALTLCD
+
+        ; DE += 20 (col stride)
+        MVI A,14H
+INC20:  INX D
+        DCR A
+        JNZ INC20
+
+        DCR C
+        JNZ COLLP
+
+        POP D               ; restore row start
+        INX D               ; next row (row stride = 2)
+        INX D
+
+        DCR B
+        JNZ ROWLP
+
+        POP H
+        POP D
+        POP B
+        RET

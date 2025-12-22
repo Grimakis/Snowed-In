@@ -5,11 +5,6 @@
       "base": 8192,
       "cols": 42,
       "cell_bytes": 2
-    },
-    "o": {
-      "base": 12288,
-      "cols": 42,
-      "cell_bytes": 2
     }
   },
   "cases": [
@@ -22,7 +17,7 @@
       },
       "writes": [
         { "addr": 4096, "u16": 8192 },
-        { "addr": 4098, "u16": 12288 }
+        { "addr": 4098, "u16": 0 }
       ],
       "expect_grid": [
         { "layout": "s", "rows": "1..1", "cols": "1..40", "u16": 0 },
@@ -40,15 +35,14 @@
         "L": 0
       },
       "fills": [
-        { "layout": "s", "rows": "0..9", "cols": "0..41", "u16": 2 },
-        { "layout": "o", "rows": "0..9", "cols": "0..41", "u16": 0 }
+        { "layout": "s", "rows": "0..9", "cols": "0..41", "u16": 2 }
       ],
       "writes": [
         { "addr": 4096, "u16": 8192 },
-        { "addr": 4098, "u16": 12288 },
-        { "layout": "o", "row": 1, "col": 1, "u16": 1 },
-        { "layout": "o", "row": 4, "col": 20, "u16": 1 },
-        { "layout": "o", "row": 8, "col": 40, "u16": 1 }
+        { "addr": 4098, "u16": 0 },
+        { "layout": "s", "row": 1, "col": 1, "u16": 258 },
+        { "layout": "s", "row": 4, "col": 20, "u16": 258 },
+        { "layout": "s", "row": 8, "col": 40, "u16": 258 }
       ],
       "expect_grid": [
         {
@@ -64,9 +58,9 @@
         }
       ],
       "expect_cells": [
-        { "layout": "s", "row": 1, "col": 1, "u16": 0 },
-        { "layout": "s", "row": 4, "col": 20, "u16": 0 },
-        { "layout": "s", "row": 8, "col": 40, "u16": 0 }
+        { "layout": "s", "row": 1, "col": 1, "u16": 256 },
+        { "layout": "s", "row": 4, "col": 20, "u16": 256 },
+        { "layout": "s", "row": 8, "col": 40, "u16": 256 }
       ]
     }
   ]

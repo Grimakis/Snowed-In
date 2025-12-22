@@ -1,0 +1,42 @@
+; ALTLCD -> LCD PRINT (reverse-aware)
+; Uses bit 7 as a reverse-video flag (not a glyph bit).
+; If bit 7 is set, turn reverse on, print low-7-bit glyph, then keep state.
+; If bit 7 is clear, ensure reverse is off.
+; Assembled at ORG 0000H and patched by BASIC loader to runtime address.
+
+        ORG 0000H
+
+START:  LXI H,FCC0H         ; ALTLCD start
+        LXI B,0140H         ; 320 bytes
+        MVI D,00H           ; reverse state (0=off,1=on)
+
+LOOP:   MOV A,M             ; load cell
+        MOV E,A             ; save original
+        ANI 80H
+        JZ NORV
+        MOV A,D
+        ORA A
+        JNZ DOCHAR
+        CALL 4431H          ; reverse on
+        MVI D,01H
+        JMP DOCHAR
+
+NORV:   MOV A,D
+        ORA A
+        JZ DOCHAR
+        CALL 426EH          ; reverse off
+        MVI D,00H
+
+DOCHAR: MOV A,E
+        ANI 7FH
+        CALL 4B44H
+        INX H
+        DCX B
+        MOV A,B
+        ORA C
+        JNZ LOOP
+        MOV A,D
+        ORA A
+        JZ DONE
+        CALL 426EH          ; ensure reverse off
+DONE:   RET
