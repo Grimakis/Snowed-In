@@ -15,5 +15,5 @@ jobs:
       source: SNOW.DO
       ascii-name: SNOW.DO
       tokenized-name: SNOW.BA
-      version-var: "VER$"
+      version-var: "VS$"
     secrets: inherit
